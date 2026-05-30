@@ -21,6 +21,8 @@ cd backend && uv run uvicorn app:app --reload --port 8000
 
 App runs at `http://localhost:8000`. API docs at `http://localhost:8000/docs`.
 
+Unless specified in prompt, don't auto run the server for me at the end of the code change, I'd like to manually run it myself.
+
 ## Architecture
 
 Full-stack RAG chatbot: FastAPI backend + static HTML/JS/CSS frontend. The backend serves the frontend as static files.

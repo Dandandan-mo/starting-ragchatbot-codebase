@@ -181,16 +181,16 @@ class DocumentProcessor:
                         # Create chunks for this lesson
                         chunks = self.chunk_text(lesson_text)
                         for idx, chunk in enumerate(chunks):
-                            # For the first chunk of each lesson, add lesson context
-                            if idx == 0:
-                                chunk_with_context = f"Lesson {current_lesson} content: {chunk}"
-                            else:
-                                chunk_with_context = chunk
-                            
+                            # Add full course + lesson context to every chunk so
+                            # semantic search can match on course name regardless
+                            # of which chunk within a lesson is retrieved.
+                            chunk_with_context = f"Course {course_title} Lesson {current_lesson} content: {chunk}"
+
                             course_chunk = CourseChunk(
                                 content=chunk_with_context,
                                 course_title=course.title,
                                 lesson_number=current_lesson,
+                                lesson_link=lesson_link,
                                 chunk_index=chunk_counter
                             )
                             course_chunks.append(course_chunk)
@@ -237,11 +237,12 @@ class DocumentProcessor:
                         content=chunk_with_context,
                         course_title=course.title,
                         lesson_number=current_lesson,
+                        lesson_link=lesson_link,
                         chunk_index=chunk_counter
                     )
                     course_chunks.append(course_chunk)
                     chunk_counter += 1
-        
+
         # If no lessons found, treat entire content as one document
         if not course_chunks and len(lines) > 2:
             remaining_content = '\n'.join(lines[start_index:]).strip()

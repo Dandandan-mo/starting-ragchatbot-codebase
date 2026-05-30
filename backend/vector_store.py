@@ -168,6 +168,7 @@ class VectorStore:
         metadatas = [{
             "course_title": chunk.course_title,
             "lesson_number": chunk.lesson_number,
+            "lesson_link": chunk.lesson_link or '',
             "chunk_index": chunk.chunk_index
         } for chunk in chunks]
         # Use title with chunk index for unique IDs
@@ -232,6 +233,27 @@ class VectorStore:
         except Exception as e:
             print(f"Error getting courses metadata: {e}")
             return []
+
+    def get_course_outline(self, course_name: str) -> Optional[Dict[str, Any]]:
+        """Get course title, link, and full lesson list for a course by name (partial match supported)"""
+        import json
+        course_title = self._resolve_course_name(course_name)
+        if not course_title:
+            return None
+        try:
+            results = self.course_catalog.get(ids=[course_title])
+            if results and 'metadatas' in results and results['metadatas']:
+                metadata = results['metadatas'][0]
+                lessons = json.loads(metadata.get('lessons_json', '[]'))
+                return {
+                    'title': metadata.get('title', course_title),
+                    'course_link': metadata.get('course_link', ''),
+                    'lessons': lessons
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting course outline: {e}")
+            return None
 
     def get_course_link(self, course_title: str) -> Optional[str]:
         """Get course link for a given course title"""
