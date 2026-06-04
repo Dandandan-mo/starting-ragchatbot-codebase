@@ -3,6 +3,10 @@ Shared test configuration, sys.path setup, and fixtures for the RAG chatbot test
 
 This conftest.py must run BEFORE any backend module is imported.
 The top-level sys.path and sys.modules stubs accomplish that guarantee.
+
+API testing uses a minimal test FastAPI app (test_app / test_client fixtures) that
+mirrors the real app's endpoints but omits the static-file mount — which would fail
+in the test environment where the frontend directory does not exist.
 """
 import sys
 import os
@@ -221,3 +225,103 @@ def rag_system_with_mocks(mock_anthropic_client, mock_tool_manager):
     rag.session_manager = SessionManager(max_history=2)
 
     return rag
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# API testing fixtures
+# ────────────────────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def mock_rag_system():
+    """
+    Minimal RAGSystem stand-in for API endpoint tests.
+
+    Uses a real SessionManager so create_session() / delete_session() behave
+    correctly, while query() and get_course_analytics() are MagicMock-controlled.
+    """
+    from session_manager import SessionManager
+
+    rag = MagicMock()
+    rag.query.return_value = ("Test answer", [])
+    rag.get_course_analytics.return_value = {
+        "total_courses": 2,
+        "course_titles": ["Course A", "Course B"],
+    }
+    rag.session_manager = SessionManager(max_history=2)
+    return rag
+
+
+@pytest.fixture
+def test_app(mock_rag_system):
+    """
+    Minimal FastAPI app that mirrors the production endpoints without the
+    static-file mount.  Route handlers close over mock_rag_system so tests
+    can change return values before making requests.
+    """
+    from fastapi import FastAPI, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
+    from pydantic import BaseModel
+    from typing import List, Optional
+
+    app = FastAPI(title="RAG Test App")
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    class QueryRequest(BaseModel):
+        query: str
+        session_id: Optional[str] = None
+
+    class SourceLink(BaseModel):
+        label: str
+        url: str
+
+    class QueryResponse(BaseModel):
+        answer: str
+        sources: List[SourceLink]
+        session_id: str
+
+    class CourseStats(BaseModel):
+        total_courses: int
+        course_titles: List[str]
+
+    @app.post("/api/query", response_model=QueryResponse)
+    async def query_documents(request: QueryRequest):
+        try:
+            session_id = request.session_id
+            if not session_id:
+                session_id = mock_rag_system.session_manager.create_session()
+            answer, sources = mock_rag_system.query(request.query, session_id)
+            return QueryResponse(answer=answer, sources=sources, session_id=session_id)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/courses", response_model=CourseStats)
+    async def get_course_stats():
+        try:
+            analytics = mock_rag_system.get_course_analytics()
+            return CourseStats(
+                total_courses=analytics["total_courses"],
+                course_titles=analytics["course_titles"],
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/session/{session_id}", status_code=204)
+    async def delete_session(session_id: str):
+        mock_rag_system.session_manager.delete_session(session_id)
+
+    return app
+
+
+@pytest.fixture
+def test_client(test_app):
+    """Starlette TestClient wrapping the minimal test app."""
+    from fastapi.testclient import TestClient
+
+    return TestClient(test_app)
