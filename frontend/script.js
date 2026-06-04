@@ -5,7 +5,7 @@ const API_URL = '/api';
 let currentSessionId = null;
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatBtn;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatBtn, themeToggle;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,14 +16,49 @@ document.addEventListener('DOMContentLoaded', () => {
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
     newChatBtn = document.getElementById('newChatBtn');
+    themeToggle = document.getElementById('themeToggle');
 
+    initTheme();
     setupEventListeners();
     createNewSession();
     loadCourseStats();
 });
 
+// Theme Management
+
+// The inline <head> script already applied 'light-mode' to <html> before first
+// paint to avoid a flash of the wrong theme. This function syncs aria-pressed
+// state and wires up the OS-level preference listener.
+function initTheme() {
+    const isLight = document.documentElement.classList.contains('light-mode');
+    themeToggle.setAttribute('aria-pressed', String(isLight));
+
+    // React to OS theme changes at runtime, but only when the user hasn't made
+    // an explicit choice (no saved preference in localStorage).
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    mq.addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) {
+            applyTheme(e.matches);
+        }
+    });
+}
+
+function applyTheme(light) {
+    document.documentElement.classList.toggle('light-mode', light);
+    themeToggle.setAttribute('aria-pressed', String(light));
+}
+
+function toggleTheme() {
+    const isLight = document.documentElement.classList.toggle('light-mode');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    themeToggle.setAttribute('aria-pressed', String(isLight));
+}
+
 // Event Listeners
 function setupEventListeners() {
+    // Theme toggle
+    themeToggle.addEventListener('click', toggleTheme);
+
     // Chat functionality
     sendButton.addEventListener('click', sendMessage);
     chatInput.addEventListener('keypress', (e) => {
