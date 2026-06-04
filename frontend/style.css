@@ -788,7 +788,6 @@ details[open] .suggested-header::before {
 /* Course titles display */
 .course-titles {
     margin-top: 0.5rem;
-    /* Remove max-height to show all titles without scrolling */
 }
 
 .course-title-item {

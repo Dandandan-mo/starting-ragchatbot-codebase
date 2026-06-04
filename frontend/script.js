@@ -65,8 +65,7 @@ function setupEventListeners() {
         if (e.key === 'Enter') sendMessage();
     });
     newChatBtn.addEventListener('click', handleNewChat);
-    
-    
+
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
         button.addEventListener('click', (e) => {
@@ -76,7 +75,6 @@ function setupEventListeners() {
         });
     });
 }
-
 
 // Chat Functions
 async function sendMessage() {
