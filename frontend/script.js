@@ -174,6 +174,10 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     }
     
     messageDiv.innerHTML = html;
+    messageDiv.querySelectorAll('.message-content a').forEach(link => {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+    });
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     
